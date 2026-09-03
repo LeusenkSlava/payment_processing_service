@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from starlette.responses import RedirectResponse
 
 from src.inbound.http.health.router import router as health_router
+from src.inbound.http.payments.router import router as payments_router
 
 
 def make_fastapi_root_router(*, debug_mode: bool) -> APIRouter:
@@ -12,5 +13,6 @@ def make_fastapi_root_router(*, debug_mode: bool) -> APIRouter:
         return RedirectResponse(url="/docs")
 
     router.include_router(health_router)
+    router.include_router(payments_router)
 
     return router

@@ -1,0 +1,13 @@
+from typing import Protocol
+
+from src.core.payments.models.payment import OutboxEvent, Payment
+
+
+class PaymentRepository(Protocol):
+    async def add(self, payment: Payment) -> None: ...
+    async def get_by_id(self, payment_id: int) -> Payment | None: ...
+    async def get_by_idempotency_key(self, key: str) -> Payment | None: ...
+
+
+class OutboxRepository(Protocol):
+    async def add(self, event: OutboxEvent) -> None: ...
