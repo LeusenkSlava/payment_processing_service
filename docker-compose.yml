@@ -1,0 +1,64 @@
+name: payment_processing_service
+
+networks:
+  pp_net:
+    name: payment_processing_network
+  traefik:
+    name: traefik
+    external: true
+
+volumes:
+  postgres_data:
+  postgres_config:
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    image: payment-processing-service:local
+    env_file:
+      - .env
+    expose:
+      - 8000
+    depends_on:
+      db_pg:
+        condition: service_healthy
+    restart: on-failure
+    volumes:
+      - .:/app
+    networks:
+      - traefik
+      - pp_net
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.payment_processing.rule=Host(`payment_processing.localhost`)"
+      - "traefik.http.routers.payment_processing.entrypoints=web"
+
+  db_pg:
+    image: postgres:18-alpine
+    shm_size: 128mb
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES__DB?POSTGRES__DB is required}
+      POSTGRES_USER: ${POSTGRES__USER?POSTGRES__USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD?POSTGRES__PASSWORD is required}
+    ports:
+      - 9879:${POSTGRES__PORT?POSTGRES__PORT is required}
+    networks:
+      - pp_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+      start_period: 1s
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - postgres_config:/etc/postgresql
