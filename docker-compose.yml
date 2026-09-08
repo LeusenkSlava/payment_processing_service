@@ -3,15 +3,27 @@ name: payment_processing_service
 networks:
   pp_net:
     name: payment_processing_network
-  traefik:
-    name: traefik
-    external: true
 
 volumes:
   postgres_data:
   postgres_config:
+  rabbitmq_data:
 
 services:
+  migrations:
+    image: payment-processing-service:local
+    command: alembic upgrade head
+    env_file:
+      - .env
+    depends_on:
+      db_pg:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - pp_net
+    restart: "no"
+
   app:
     build:
       context: .
@@ -22,24 +34,44 @@ services:
     image: payment-processing-service:local
     env_file:
       - .env
-    expose:
-      - 8000
+    ports:
+      - "8000:8000"
     depends_on:
       db_pg:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     restart: on-failure
     volumes:
       - .:/app
     networks:
-      - traefik
       - pp_net
     dns:
       - 8.8.8.8
       - 1.1.1.1
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.payment_processing.rule=Host(`payment_processing.localhost`)"
-      - "traefik.http.routers.payment_processing.entrypoints=web"
+
+  consumer:
+    image: payment-processing-service:local
+    command: python -m src.main.run_consumer
+    env_file:
+      - .env
+    depends_on:
+      db_pg:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    restart: on-failure
+    volumes:
+      - .:/app
+    networks:
+      - pp_net
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   db_pg:
     image: postgres:18-alpine
@@ -62,3 +94,24 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
       - postgres_config:/etc/postgresql
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ__USER?RABBITMQ__USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ__PASSWORD?RABBITMQ__PASSWORD is required}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ__VHOST:-/}
+    ports:
+      - "${RABBITMQ__PORT:-5672}:5672"
+      - "${RABBITMQ__MANAGEMENT_PORT:-15672}:15672"
+    networks:
+      - pp_net
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_running" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq

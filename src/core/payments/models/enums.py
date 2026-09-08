@@ -9,6 +9,7 @@ class Currency(str, enum.Enum):
 
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
+    PROCESSING = "processing"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
 

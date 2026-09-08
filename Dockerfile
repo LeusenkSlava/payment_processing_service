@@ -33,3 +33,7 @@ USER runner
 EXPOSE 8000
 
 ENTRYPOINT [ "/app/docker-entrypoint.sh" ]
+
+#!/bin/bash
+
+CMD ["uvicorn", "src.main.run:app", "--host", "0.0.0.0", "--port", "8000"]

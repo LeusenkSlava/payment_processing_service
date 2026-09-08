@@ -18,3 +18,6 @@ def setup_logging() -> None:
     root_logger.setLevel(log_level)
     root_logger.handlers.clear()
     root_logger.addHandler(handler)
+
+    logging.getLogger("aio_pika").setLevel(logging.WARNING)
+    logging.getLogger("aiormq").setLevel(logging.WARNING)

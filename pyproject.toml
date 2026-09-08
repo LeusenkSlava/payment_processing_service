@@ -12,6 +12,7 @@ dependencies = [
     "alembic==1.19.0",
     "faststream[rabbit]==0.7.0",
     "psycopg[binary]==3.2.6",
+    "pytest>=9.1.1",
 ]
 
 [tool.ruff.lint.flake8-bugbear]

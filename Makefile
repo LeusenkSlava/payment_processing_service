@@ -58,3 +58,28 @@ migration: docker-env
 		exit 1; \
 	fi
 	$(DOCKER_COMPOSE) exec app alembic revision --autogenerate -m "$(m)"
+
+# Logs
+.PHONY: logs logs-app logs-consumer logs-migrations logs-db logs-rabbitmq
+logs:
+	$(DOCKER_COMPOSE) logs -f --tail=200
+
+logs-app:
+	$(DOCKER_COMPOSE) logs -f --tail=200 app
+
+logs-consumer:
+	$(DOCKER_COMPOSE) logs -f --tail=200 consumer
+
+logs-migrations:
+	$(DOCKER_COMPOSE) logs --tail=200 migrations
+
+logs-db:
+	$(DOCKER_COMPOSE) logs -f --tail=200 db_pg
+
+logs-rabbitmq:
+	$(DOCKER_COMPOSE) logs -f --tail=200 rabbitmq
+
+# Status
+.PHONY: ps
+ps:
+	$(DOCKER_COMPOSE) ps

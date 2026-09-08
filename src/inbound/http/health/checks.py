@@ -13,11 +13,20 @@ from src.inbound.http.health.schemas import (
 router = APIRouter()
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Проверка состояния сервиса",
+)
 async def health_check(
     health_service: Annotated[HealthService, Depends(get_health_service)],
     checkers: Annotated[dict, Depends(get_health_checkers)],
 ):
+    """
+    Проверяет состояние сервиса и его зависимостей (например, БД).
+
+    :return: агрегированный статус и статус каждого компонента.
+    """
     result = await health_service.check(checkers)
 
     components_by_name = {c.name: c for c in result.components}

@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,16 +6,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.inbound.http.root_router import make_fastapi_root_router
 from src.main.config.logging import setup_logging
 from src.main.config.settings import settings
+from src.main.setup.background_tasks import BackgroundTaskRunner
 from src.outbound.database.session import engine
+from src.outbound.rabbit_mq.broker import broker, setup_topology
+from src.outbound.webhook.client import http_client
+from src.outbound.workers import BACKGROUND_WORKERS
 
 setup_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await broker.connect()
+    await setup_topology()
+
+    background_tasks = BackgroundTaskRunner()
+    background_tasks.start_all(BACKGROUND_WORKERS)
 
     yield
 
+    await background_tasks.shutdown()
+    await http_client.aclose()
+    await broker.stop()
     await engine.dispose()
 
 
@@ -31,7 +42,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

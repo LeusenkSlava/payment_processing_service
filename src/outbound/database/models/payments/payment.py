@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Enum, Numeric, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, Enum, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,6 +13,7 @@ class PaymentModel(BaseModel):
     __tablename__ = "payments"
     __table_args__ = (
         UniqueConstraint("idempotency_key", name="uq_payments_idempotency_key"),
+        CheckConstraint("amount > 0", name="ck_payments_amount_positive"),
     )
 
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -27,9 +28,13 @@ class PaymentModel(BaseModel):
     meta_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus, native_enum=True),
+        Enum(
+            PaymentStatus,
+            native_enum=True,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
-        default=PaymentStatus.PENDING,
+        default=PaymentStatus.PENDING.value,
     )
 
     webhook_url: Mapped[str] = mapped_column(String(2048), nullable=False)
